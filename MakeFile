@@ -1,0 +1,43 @@
+VERSION = 1.0.0
+NAME = dedup-service
+RPMBUILD = $(HOME)/rpmbuild
+
+.PHONY: all clean rpm srpm
+
+all: rpm
+
+clean:
+	rm -rf $(RPMBUILD)/SOURCES/$(NAME)-$(VERSION).tar.gz
+	rm -rf $(RPMBUILD)/SRPMS/$(NAME)*
+	rm -rf $(RPMBUILD)/RPMS/*/$(NAME)*
+
+dist:
+	mkdir -p $(NAME)-$(VERSION)
+	cp -r SOURCES scripts LICENSE README.md $(NAME)-$(VERSION)/
+	cp Makefile $(NAME)-$(VERSION)/
+	tar -czf $(NAME)-$(VERSION).tar.gz $(NAME)-$(VERSION)/
+	rm -rf $(NAME)-$(VERSION)
+
+srpm: dist
+	mkdir -p $(RPMBUILD)/SOURCES
+	cp $(NAME)-$(VERSION).tar.gz $(RPMBUILD)/SOURCES/
+	cp $(NAME).spec $(RPMBUILD)/SPECS/
+	rpmbuild -bs $(RPMBUILD)/SPECS/$(NAME).spec
+
+rpm: srpm
+	rpmbuild --rebuild $(RPMBUILD)/SRPMS/$(NAME)-$(VERSION)-1*.src.rpm
+
+install:
+	gcc -O2 -Wall -Wextra SOURCES/dedup-service.c -o /tmp/dedup-service -lxxhash
+	sudo cp /tmp/dedup-service /usr/sbin/
+	sudo cp SOURCES/dedup-service.conf /etc/
+	sudo cp SOURCES/dedup-service.service /usr/lib/systemd/system/
+	sudo systemctl daemon-reload
+
+uninstall:
+	sudo systemctl stop dedup-service || true
+	sudo systemctl disable dedup-service || true
+	sudo rm -f /usr/sbin/dedup-service
+	sudo rm -f /etc/dedup-service.conf
+	sudo rm -f /usr/lib/systemd/system/dedup-service.service
+	sudo systemctl daemon-reload

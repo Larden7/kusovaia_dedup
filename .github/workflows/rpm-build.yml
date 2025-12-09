@@ -1,0 +1,25 @@
+name: Build RPM Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Build RPM in container
+      run: |
+        docker run --rm -v $(pwd):/src -w /src fedora:latest \
+          bash -c "dnf install -y gcc make rpm-build xxhash-devel systemd-devel && make rpm"
+    
+    - name: Upload RPM artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: rpm-package
+        path: rpmbuild/RPMS/**/*.rpm
